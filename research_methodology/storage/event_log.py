@@ -34,6 +34,15 @@ class EventLog(ABC):
     @abstractmethod
     def close(self) -> None: ...
 
+    @abstractmethod
+    def purge(self, stream: str, event_id: str) -> bool:
+        """Tombstone a record (§9.9 erasure): empty the payload, flag it out of reads,
+        keep the event_id claimed so it can never be re-added."""
+
+    @abstractmethod
+    def purge_data_class(self, data_class: str) -> int:
+        """Hard-DELETE every record of a data_class (retention aging §9.9)."""
+
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (

@@ -33,6 +33,7 @@ class SnapshotStore:
         new_file = not self._path.exists()
         self._conn = sqlite3.connect(str(self._path))
         self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")    # absorb rare concurrent-writer collisions
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
         if new_file:
