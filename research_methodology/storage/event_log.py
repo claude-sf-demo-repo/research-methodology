@@ -87,3 +87,22 @@ class SQLiteEventLog(EventLog):
 
     def close(self) -> None:
         self._conn.close()
+
+    def purge(self, stream: str, event_id: str) -> bool:
+        """Tombstone a record (§9.9 erasure): empty the payload, flag it out of reads,
+        keep the event_id claimed so it can never be re-added."""
+        cur = self._conn.execute(
+            "UPDATE events SET payload = ?, data_class = ? "
+            "WHERE stream = ? AND event_id = ? AND data_class != ?",
+            (self._encryptor.encrypt(b"{}"), TOMBSTONE_DATA_CLASS,
+             stream, event_id, TOMBSTONE_DATA_CLASS),
+        )
+        self._conn.commit()
+        return cur.rowcount == 1
+
+    def purge_data_class(self, data_class: str) -> int:
+        """Hard-DELETE every record of a data_class (retention aging §9.9)."""
+        cur = self._conn.execute(
+            "DELETE FROM events WHERE data_class = ?", (data_class,))
+        self._conn.commit()
+        return cur.rowcount
