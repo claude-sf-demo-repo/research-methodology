@@ -24,6 +24,9 @@ class Ledger(ABC):
     def get(self, episode_id: str) -> dict | None: ...
     @abstractmethod
     def episodes(self, *, session_id: str | None = None) -> list[dict]: ...
+    @abstractmethod
+    def beliefs_as_of(self, as_of: str, *, session_id: str | None = None) -> list[dict]:
+        """Episodes believed at ISO-8601 `as_of`: valid_at <= as_of < invalid_at (§9.9)."""
 
 
 class InMemoryLedger(Ledger):
@@ -47,3 +50,15 @@ class InMemoryLedger(Ledger):
         if session_id is not None:
             vals = [e for e in vals if e.get("session_id") == session_id]
         return vals
+
+    def beliefs_as_of(self, as_of: str, *, session_id: str | None = None) -> list[dict]:
+        out: list[dict] = []
+        for e in self.episodes(session_id=session_id):
+            valid_at = e.get("valid_at")
+            invalid_at = e.get("invalid_at")
+            if valid_at is None or valid_at > as_of:
+                continue
+            if invalid_at is not None and as_of >= invalid_at:
+                continue
+            out.append(e)
+        return out
